@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact - Easy ToDo</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <header class="topbar">
+        <nav>
+            <ul class="nav">
+                <li><a class="nav-link" href="/">Home</a></li>
+                <li><a class="nav-link" href="/about">About</a></li>
+                <li><a class="nav-link" href="/contact">Contact</a></li>
+                <li><a class="nav-link" href="/search">Search</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <h1 class="title">Contact Us</h1>
+
+    <section class="card">
+        <h2>Get in Touch</h2>
+        <p>Have questions or feedback? We'd love to hear from you!</p>
+    </section>
+
+    <section class="card">
+        <h2>Send a Message</h2>
+        <form action="/contact" method="POST" class="contact-form">
+            <div class="form-group">
+                <label for="name" class="form-label">Your Name</label>
+                <input type="text" id="name" name="name" class="input" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Your Email</label>
+                <input type="email" id="email" name="email" class="input" required>
+            </div>
+
+            <div class="form-group">
+                <label for="message" class="form-label">Message</label>
+                <textarea id="message" name="message" class="textarea" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Send Message</button>
+            </div>
+        </form>
+    </section>
+
+    <footer class="footer">
+        <p>Web Programming 2 - Easy ToDo Project</p>
+    </footer>
+</div>
+</body>
+</html>

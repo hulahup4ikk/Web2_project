@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search - Easy ToDo</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <header class="topbar">
+        <nav>
+            <ul class="nav">
+                <li><a class="nav-link" href="/">Home</a></li>
+                <li><a class="nav-link" href="/about">About</a></li>
+                <li><a class="nav-link" href="/contact">Contact</a></li>
+                <li><a class="nav-link" href="/search">Search</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <h1 class="title">Search Tasks</h1>
+
+    <section class="card">
+        <h2>Find Your Tasks</h2>
+        <form action="/search" method="GET" class="contact-form">
+            <div class="form-group">
+                <label for="q" class="form-label">Search Query</label>
+                <input type="text" id="q" name="q" class="input" placeholder="Enter search terms..." required>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Search Results</h2>
+        <div id="searchResults">
+            <p class="hint">Enter a search query above to find tasks.</p>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>Web Programming 2 - Easy ToDo Project</p>
+    </footer>
+</div>
+</body>
+</html>

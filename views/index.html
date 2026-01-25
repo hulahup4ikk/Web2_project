@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home - Easy ToDo</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="topbar">
+      <nav>
+        <ul class="nav">
+          <li><a class="nav-link" href="/">Home</a></li>
+          <li><a class="nav-link" href="/about">About</a></li>
+          <li><a class="nav-link" href="/contact">Contact</a></li>
+          <li><a class="nav-link" href="/search">Search</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <h1 class="title">Easy ToDo Manager</h1>
+
+    <section class="card">
+      <h2>Add New Task</h2>
+
+      <div class="row row-wide">
+        <input type="text" id="todo-input" class="input" placeholder="What needs to be done?" />
+        <button type="button" id="addBtn" class="btn btn-primary">Add Task</button>
+      </div>
+
+      <p class="hint">This page works with MongoDB API: <code>/api/tasks</code></p>
+    </section>
+
+    <section class="card">
+      <h2>View Options</h2>
+      <div class="row row-wide">
+        <button type="button" id="toggleTitleOnlyBtn" class="btn btn-ghost">Titles only: OFF</button>
+
+        <label class="check">
+          <input type="checkbox" id="toggleCreatedAt" />
+          <span>Show created date</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Filters & Sorting</h2>
+
+      <div class="row row-wide">
+        <input type="text" id="filterQuery" class="input" placeholder="Search by title..." />
+
+        <select id="filterStatus" class="select">
+          <option value="">All statuses</option>
+          <option value="false">Not done</option>
+          <option value="true">Done</option>
+        </select>
+
+        <select id="sortBy" class="select">
+          <option value="created_at">Newest first</option>
+          <option value="title">Title A→Z</option>
+        </select>
+
+        <button type="button" id="applyFiltersBtn" class="btn btn-secondary">Apply</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Your Tasks</h2>
+      <div id="tasksList" class="tasks"></div>
+    </section>
+
+    <section class="card">
+      <h2>Quick API Test Links</h2>
+      <ul class="links">
+        <li><a href="/api/tasks" target="_blank">/api/tasks</a></li>
+        <li><a href="/api/tasks/000000000000000000000000" target="_blank">/api/tasks/:id</a></li>
+      </ul>
+    </section>
+
+    <footer class="footer">
+      <p>Web Programming 2 - Easy ToDo Project</p>
+    </footer>
+  </div>
+
+  <script>
+    const API_URL = "/api/tasks";
+
+    let titleOnly = false;
+    let showCreatedAt = false;
+
+    function formatDate(value) {
+      if (!value) return "";
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value);
+      return d.toLocaleString();
+    }
+
+    function buildApiUrl() {
+      const url = new URL(API_URL, window.location.origin);
+
+      const fields = ["title", "description", "is_done", "created_at"];
+      if (titleOnly) {
+        url.searchParams.set("fields", ["title", "is_done", "created_at"].join(","));
+      } else {
+        const use = showCreatedAt
+          ? ["title", "description", "is_done", "created_at"]
+          : ["title", "description", "is_done"];
+        url.searchParams.set("fields", use.join(","));
+      }
+
+      const q = document.getElementById("filterQuery").value.trim();
+      const status = document.getElementById("filterStatus").value;
+      const sortBy = document.getElementById("sortBy").value;
+
+      if (q) url.searchParams.set("q", q);
+      if (status !== "") url.searchParams.set("is_done", status);
+
+      if (sortBy === "title") {
+        url.searchParams.set("sort", "title");
+        url.searchParams.set("order", "asc");
+      } else {
+        url.searchParams.set("sort", "created_at");
+        url.searchParams.set("order", "desc");
+      }
+
+      return url.toString();
+    }
+
+    function renderEmpty(listEl) {
+      listEl.innerHTML = `<p class="muted">No tasks yet. Add one above!</p>`;
+    }
+
+    function renderError(listEl, message) {
+      listEl.innerHTML = `<p class="muted">Failed to load tasks. ${message ? "(" + message + ")" : ""}</p>`;
+    }
+
+    async function loadTasks() {
+      const list = document.getElementById("tasksList");
+      list.innerHTML = "";
+
+      try {
+        const res = await fetch(buildApiUrl());
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          renderError(list, `HTTP ${res.status} ${txt}`);
+          return;
+        }
+
+        const data = await res.json();
+        const tasks = Array.isArray(data) ? data : (data.items || []);
+
+        if (!tasks.length) {
+          renderEmpty(list);
+          return;
+        }
+
+        for (const t of tasks) {
+          const id = t._id;
+          const done = !!t.is_done;
+
+          const card = document.createElement("div");
+          card.className = "task";
+
+          const left = document.createElement("div");
+          left.className = "task-left";
+
+          const title = document.createElement("div");
+          title.className = "task-title";
+          title.textContent = t.title || "";
+
+          if (done) title.classList.add("task-title-done");
+
+          left.appendChild(title);
+
+          if (!titleOnly && t.description) {
+            const desc = document.createElement("div");
+            desc.className = "task-desc";
+            desc.textContent = t.description;
+            left.appendChild(desc);
+          }
+
+          if (showCreatedAt && t.created_at) {
+            const created = document.createElement("div");
+            created.className = "task-meta";
+            created.textContent = `Created: ${formatDate(t.created_at)}`;
+            left.appendChild(created);
+          }
+
+          const actions = document.createElement("div");
+          actions.className = "task-actions";
+
+          const btnEdit = document.createElement("button");
+          btnEdit.type = "button";
+          btnEdit.className = "btn btn-secondary btn-small";
+          btnEdit.textContent = "Edit";
+          btnEdit.addEventListener("click", async () => {
+            await editTask(id, t.title, t.description ?? null, done);
+          });
+
+          const btnToggle = document.createElement("button");
+          btnToggle.type = "button";
+          btnToggle.className = "btn btn-ghost btn-small";
+          btnToggle.textContent = done ? "Undo" : "Done";
+          btnToggle.addEventListener("click", async () => {
+            await toggleTask(id, t.title, t.description ?? null, done);
+          });
+
+          const btnDelete = document.createElement("button");
+          btnDelete.type = "button";
+          btnDelete.className = "btn btn-danger btn-small";
+          btnDelete.textContent = "Delete";
+          btnDelete.addEventListener("click", async () => {
+            await deleteTask(id);
+          });
+
+          actions.appendChild(btnEdit);
+          actions.appendChild(btnToggle);
+          actions.appendChild(btnDelete);
+
+          card.appendChild(left);
+          card.appendChild(actions);
+
+          list.appendChild(card);
+        }
+      } catch (e) {
+        renderError(document.getElementById("tasksList"), e?.message || "");
+      }
+    }
+
+    async function addTask() {
+      const input = document.getElementById("todo-input");
+      const title = input.value.trim();
+      const description = prompt("Enter task description (optional):") || "";
+
+      if (!title) {
+        alert("Please enter a task title");
+        return;
+      }
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description })
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`POST failed: ${res.status}\n${txt}`);
+        return;
+      }
+
+      input.value = "";
+      await loadTasks();
+    }
+
+    async function editTask(id, currentTitle, currentDescription, currentStatus) {
+      const newTitle = prompt("Enter new title:", currentTitle);
+      if (newTitle === null) return; // User cancelled
+
+      const newDescription = prompt("Enter new description (optional):", currentDescription || "");
+      if (newDescription === null) return; // User cancelled
+
+      if (!newTitle.trim()) {
+        alert("Title cannot be empty");
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          description: newDescription.trim() || null,
+          is_done: currentStatus
+        })
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`PUT failed: ${res.status}\n${txt}`);
+        return;
+      }
+
+      await loadTasks();
+    }
+
+    async function toggleTask(id, title, description, currentStatus) {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description,
+          is_done: !currentStatus
+        })
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`PUT failed: ${res.status}\n${txt}`);
+        return;
+      }
+
+      await loadTasks();
+    }
+
+    async function deleteTask(id) {
+      if (!confirm("Are you sure?")) return;
+
+      const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`DELETE failed: ${res.status}\n${txt}`);
+        return;
+      }
+
+      await loadTasks();
+    }
+
+    document.getElementById("addBtn").addEventListener("click", addTask);
+
+    document.getElementById("toggleTitleOnlyBtn").addEventListener("click", () => {
+      titleOnly = !titleOnly;
+      document.getElementById("toggleTitleOnlyBtn").textContent =
+        `Titles only: ${titleOnly ? "ON" : "OFF"}`;
+      loadTasks();
+    });
+
+    document.getElementById("toggleCreatedAt").addEventListener("change", (e) => {
+      showCreatedAt = e.target.checked;
+      loadTasks();
+    });
+
+    document.getElementById("applyFiltersBtn").addEventListener("click", () => {
+      loadTasks();
+    });
+
+    loadTasks();
+  </script>
+</body>
+</html>
