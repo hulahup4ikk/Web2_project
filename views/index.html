@@ -19,14 +19,31 @@
       </nav>
     </header>
 
+    <div class="logout-float">
+      <p id="authStatus" class="hint hint-inline">Checking login status...</p>
+      <button type="button" id="authBtn" class="btn btn-ghost">Login</button>
+    </div>
+
     <h1 class="title">Easy ToDo Manager</h1>
 
     <section class="card">
       <h2>Add New Task</h2>
 
-      <div class="row row-wide">
+      <div class="task-form">
+        <div class="task-row">
         <input type="text" id="todo-input" class="input" placeholder="What needs to be done?" />
         <button type="button" id="addBtn" class="btn btn-primary">Add Task</button>
+        </div>
+
+        <div class="task-row split">
+        <input type="text" id="category-input" class="input" placeholder="Category (e.g., Study)" />
+        <input type="number" id="priority-input" class="input" placeholder="Priority 1-5" min="1" max="5" />
+        </div>
+
+        <div class="task-row split">
+        <input type="date" id="due-date-input" class="input" />
+        <input type="number" id="time-hour-input" class="input" placeholder="Hour (0-23)" min="0" max="23" />
+      </div>
       </div>
 
       <p class="hint">This page works with MongoDB API: <code>/api/tasks</code></p>
@@ -85,27 +102,28 @@
 
   <script>
     const API_URL = "/api/tasks";
+    const AUTH_URL = "/auth";
 
     let titleOnly = false;
     let showCreatedAt = false;
+    let isAuthenticated = false;
 
     function formatDate(value) {
       if (!value) return "";
       const d = new Date(value);
       if (Number.isNaN(d.getTime())) return String(value);
-      return d.toLocaleString();
+      return d.toLocaleDateString();
     }
 
     function buildApiUrl() {
       const url = new URL(API_URL, window.location.origin);
 
-      const fields = ["title", "description", "is_done", "created_at"];
       if (titleOnly) {
         url.searchParams.set("fields", ["title", "is_done", "created_at"].join(","));
       } else {
         const use = showCreatedAt
-          ? ["title", "description", "is_done", "created_at"]
-          : ["title", "description", "is_done"];
+          ? ["title", "description", "is_done", "created_at", "category", "priority", "due_date", "time_hour", "owner"]
+          : ["title", "description", "is_done", "category", "priority", "due_date", "time_hour", "owner"];
         url.searchParams.set("fields", use.join(","));
       }
 
@@ -180,6 +198,41 @@
             left.appendChild(desc);
           }
 
+          if (t.category) {
+            const cat = document.createElement("div");
+            cat.className = "task-meta";
+            cat.textContent = `Category: ${t.category}`;
+            left.appendChild(cat);
+          }
+
+          if (t.priority) {
+            const pr = document.createElement("div");
+            pr.className = "task-meta";
+            pr.textContent = `Priority: ${t.priority}`;
+            left.appendChild(pr);
+          }
+
+          if (t.due_date) {
+            const due = document.createElement("div");
+            due.className = "task-meta";
+            due.textContent = `Due: ${formatDate(t.due_date)}`;
+            left.appendChild(due);
+          }
+
+          if (t.time_hour !== null && t.time_hour !== undefined) {
+            const th = document.createElement("div");
+            th.className = "task-meta";
+            th.textContent = `Hour: ${t.time_hour}:00`;
+            left.appendChild(th);
+          }
+
+          if (t.owner) {
+            const own = document.createElement("div");
+            own.className = "task-meta";
+            own.textContent = `Owner: ${t.owner}`;
+            left.appendChild(own);
+          }
+
           if (showCreatedAt && t.created_at) {
             const created = document.createElement("div");
             created.className = "task-meta";
@@ -194,6 +247,10 @@
           btnEdit.type = "button";
           btnEdit.className = "btn btn-secondary btn-small";
           btnEdit.textContent = "Edit";
+          if (!isAuthenticated) {
+            btnEdit.disabled = true;
+            btnEdit.title = "Login required";
+          }
           btnEdit.addEventListener("click", async () => {
             await editTask(id, t.title, t.description ?? null, done);
           });
@@ -202,6 +259,10 @@
           btnToggle.type = "button";
           btnToggle.className = "btn btn-ghost btn-small";
           btnToggle.textContent = done ? "Undo" : "Done";
+          if (!isAuthenticated) {
+            btnToggle.disabled = true;
+            btnToggle.title = "Login required";
+          }
           btnToggle.addEventListener("click", async () => {
             await toggleTask(id, t.title, t.description ?? null, done);
           });
@@ -210,6 +271,10 @@
           btnDelete.type = "button";
           btnDelete.className = "btn btn-danger btn-small";
           btnDelete.textContent = "Delete";
+          if (!isAuthenticated) {
+            btnDelete.disabled = true;
+            btnDelete.title = "Login required";
+          }
           btnDelete.addEventListener("click", async () => {
             await deleteTask(id);
           });
@@ -229,8 +294,17 @@
     }
 
     async function addTask() {
+      if (!isAuthenticated) {
+        alert("Login required to add tasks");
+        return;
+      }
+
       const input = document.getElementById("todo-input");
       const title = input.value.trim();
+      const category = document.getElementById("category-input").value.trim();
+      const priority = document.getElementById("priority-input").value.trim();
+      const dueDate = document.getElementById("due-date-input").value;
+      const timeHour = document.getElementById("time-hour-input").value.trim();
       const description = prompt("Enter task description (optional):") || "";
 
       if (!title) {
@@ -241,7 +315,14 @@
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description })
+        body: JSON.stringify({
+          title,
+          description,
+          category: category || null,
+          priority: priority ? Number(priority) : null,
+          due_date: dueDate || null,
+          time_hour: timeHour ? Number(timeHour) : null
+        })
       });
 
       if (!res.ok) {
@@ -251,6 +332,10 @@
       }
 
       input.value = "";
+      document.getElementById("category-input").value = "";
+      document.getElementById("priority-input").value = "";
+      document.getElementById("due-date-input").value = "";
+      document.getElementById("time-hour-input").value = "";
       await loadTasks();
     }
 
@@ -260,6 +345,18 @@
 
       const newDescription = prompt("Enter new description (optional):", currentDescription || "");
       if (newDescription === null) return; // User cancelled
+
+      const newCategory = prompt("Enter category (optional):", "");
+      if (newCategory === null) return;
+
+      const newPriority = prompt("Enter priority 1-5 (optional):", "");
+      if (newPriority === null) return;
+
+      const newDueDate = prompt("Enter due date (YYYY-MM-DD) (optional):", "");
+      if (newDueDate === null) return;
+
+      const newTimeHour = prompt("Enter hour (0-23) (optional):", "");
+      if (newTimeHour === null) return;
 
       if (!newTitle.trim()) {
         alert("Title cannot be empty");
@@ -272,7 +369,11 @@
         body: JSON.stringify({
           title: newTitle.trim(),
           description: newDescription.trim() || null,
-          is_done: currentStatus
+          is_done: currentStatus,
+          category: newCategory.trim() || null,
+          priority: newPriority ? Number(newPriority) : null,
+          due_date: newDueDate || null,
+          time_hour: newTimeHour ? Number(newTimeHour) : null
         })
       });
 
@@ -319,7 +420,35 @@
       await loadTasks();
     }
 
+    async function loadAuth() {
+      const status = document.getElementById("authStatus");
+      const btn = document.getElementById("authBtn");
+      try {
+        const res = await fetch(`${AUTH_URL}/me`);
+        const data = await res.json();
+        isAuthenticated = !!data.authenticated;
+        status.textContent = isAuthenticated
+          ? `Logged in as ${data.email || "user"}`
+          : "Not logged in";
+        btn.textContent = isAuthenticated ? "Logout" : "Login";
+      } catch (e) {
+        status.textContent = "Auth status unavailable";
+        btn.textContent = "Login";
+      }
+    }
+
+    async function handleAuthBtn() {
+      if (!isAuthenticated) {
+        window.location.href = "/login";
+        return;
+      }
+      await fetch(`${AUTH_URL}/logout`, { method: "POST" });
+      await loadAuth();
+      await loadTasks();
+    }
+
     document.getElementById("addBtn").addEventListener("click", addTask);
+    document.getElementById("authBtn").addEventListener("click", handleAuthBtn);
 
     document.getElementById("toggleTitleOnlyBtn").addEventListener("click", () => {
       titleOnly = !titleOnly;
@@ -337,7 +466,7 @@
       loadTasks();
     });
 
-    loadTasks();
+    loadAuth().then(loadTasks);
   </script>
 </body>
 </html>

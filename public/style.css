@@ -103,9 +103,61 @@ html,body{
   flex-wrap: wrap;
 }
 
+.task-form{
+  width: min(740px, 92vw);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-row .input{
+  width: 100%;
+  max-width: none;
+}
+
+.task-row.split .input{
+  flex: 1 1 0;
+}
+
 .hint{
   margin: 14px 0 0;
   text-align:center;
+  color: var(--muted);
+}
+
+.hint-inline{
+  margin: 0;
+  text-align:left;
+}
+
+.row-actions{
+  justify-content: space-between;
+  width: min(740px, 92vw);
+}
+
+.logout-float{
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(7, 11, 20, 0.55);
+  border: 1px solid var(--stroke);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+}
+
+.logout-float .hint-inline{
   color: var(--muted);
 }
 

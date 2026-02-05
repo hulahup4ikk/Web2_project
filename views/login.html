@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Easy ToDo</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="topbar">
+      <nav>
+        <ul class="nav">
+          <li><a class="nav-link" href="/">Home</a></li>
+          <li><a class="nav-link" href="/about">About</a></li>
+          <li><a class="nav-link" href="/contact">Contact</a></li>
+          <li><a class="nav-link" href="/search">Search</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <h1 class="title">Login</h1>
+
+    <section class="card">
+      <h2>Sign in</h2>
+      <div class="contact-form">
+        <div class="form-group">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" id="email" class="input" placeholder="admin@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" id="password" class="input" placeholder="••••••••" required />
+        </div>
+        <div class="form-group">
+          <button type="button" id="loginBtn" class="btn btn-primary">Login</button>
+        </div>
+        <p id="loginMsg" class="hint"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Create account</h2>
+      <div class="contact-form">
+        <div class="form-group">
+          <label for="reg-email" class="form-label">Email</label>
+          <input type="email" id="reg-email" class="input" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-password" class="form-label">Password</label>
+          <input type="password" id="reg-password" class="input" placeholder="Min 6 characters" required />
+        </div>
+        <div class="form-group">
+          <button type="button" id="registerBtn" class="btn btn-secondary">Register</button>
+        </div>
+        <p id="registerMsg" class="hint"></p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Web Programming 2 - Easy ToDo Project</p>
+    </footer>
+  </div>
+
+  <script>
+    const AUTH_URL = "/auth";
+
+    async function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const msg = document.getElementById("loginMsg");
+      msg.textContent = "";
+
+      if (!email || !password) {
+        msg.textContent = "Email and password are required";
+        return;
+      }
+
+      const res = await fetch(`${AUTH_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!res.ok) {
+        msg.textContent = "Invalid credentials";
+        return;
+      }
+
+      window.location.href = "/";
+    }
+
+    async function register() {
+      const email = document.getElementById("reg-email").value.trim();
+      const password = document.getElementById("reg-password").value;
+      const msg = document.getElementById("registerMsg");
+      msg.textContent = "";
+
+      if (!email || !password) {
+        msg.textContent = "Email and password are required";
+        return;
+      }
+
+      const res = await fetch(`${AUTH_URL}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (res.status === 409) {
+        msg.textContent = "Email already exists";
+        return;
+      }
+
+      if (!res.ok) {
+        msg.textContent = "Registration failed";
+        return;
+      }
+
+      msg.textContent = "Registered. Now you can login.";
+    }
+
+    document.getElementById("loginBtn").addEventListener("click", login);
+    document.getElementById("registerBtn").addEventListener("click", register);
+  </script>
+</body>
+</html>

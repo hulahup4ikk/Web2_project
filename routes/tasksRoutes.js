@@ -5,6 +5,13 @@ const { connectToDatabase } = require("../mongo");
 const router = express.Router();
 const COLLECTION = "tasks";
 
+function requireAuth(req, res, next) {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  return next();
+}
+
 function parseObjectId(id) {
   if (!ObjectId.isValid(id)) return null;
   return new ObjectId(id);
@@ -75,17 +82,49 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
-  const { title, description, is_done } = req.body;
+router.post("/", requireAuth, async (req, res) => {
+  const { title, description, is_done, priority, due_date, category, time_hour } = req.body;
 
   if (!title || typeof title !== "string" || title.trim() === "") {
     return res.status(400).json({ error: "Missing or invalid field: title" });
+  }
+
+  if (priority !== undefined) {
+    const p = Number(priority);
+    if (!Number.isInteger(p) || p < 1 || p > 5) {
+      return res.status(400).json({ error: "Invalid field: priority (1-5)" });
+    }
+  }
+
+  if (due_date !== undefined && due_date !== null) {
+    const d = new Date(due_date);
+    if (Number.isNaN(d.getTime())) {
+      return res.status(400).json({ error: "Invalid field: due_date (ISO date string)" });
+    }
+  }
+
+  if (category !== undefined && category !== null) {
+    if (typeof category !== "string") {
+      return res.status(400).json({ error: "Invalid field: category" });
+    }
+  }
+
+  if (time_hour !== undefined && time_hour !== null) {
+    const h = Number(time_hour);
+    if (!Number.isInteger(h) || h < 0 || h > 23) {
+      return res.status(400).json({ error: "Invalid field: time_hour (0-23)" });
+    }
   }
 
   const doc = {
     title: title.trim(),
     description: typeof description === "string" ? description.trim() : null,
     is_done: is_done === true,
+    priority: priority !== undefined ? Number(priority) : null,
+    due_date: due_date ? new Date(due_date).toISOString() : null,
+    category: typeof category === "string" ? category.trim() : null,
+    time_hour: time_hour !== undefined && time_hour !== null ? Number(time_hour) : null,
+    owner: req.session?.email || null,
     created_at: new Date().toISOString()
   };
 
@@ -102,11 +141,11 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAuth, async (req, res) => {
   const oid = parseObjectId(req.params.id);
   if (!oid) return res.status(400).json({ error: "Invalid id" });
 
-  const { title, description, is_done } = req.body;
+  const { title, description, is_done, priority, due_date, category, time_hour } = req.body;
 
   const update = {};
   if (title !== undefined) {
@@ -125,6 +164,38 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid field: is_done (boolean required)" });
     }
     update.is_done = is_done;
+  }
+  if (priority !== undefined) {
+    const p = Number(priority);
+    if (!Number.isInteger(p) || p < 1 || p > 5) {
+      return res.status(400).json({ error: "Invalid field: priority (1-5)" });
+    }
+    update.priority = p;
+  }
+  if (due_date !== undefined) {
+    if (due_date === null || due_date === "") update.due_date = null;
+    else {
+      const d = new Date(due_date);
+      if (Number.isNaN(d.getTime())) {
+        return res.status(400).json({ error: "Invalid field: due_date (ISO date string)" });
+      }
+      update.due_date = d.toISOString();
+    }
+  }
+  if (category !== undefined) {
+    if (category === null) update.category = null;
+    else if (typeof category === "string") update.category = category.trim();
+    else return res.status(400).json({ error: "Invalid field: category" });
+  }
+  if (time_hour !== undefined) {
+    if (time_hour === null || time_hour === "") update.time_hour = null;
+    else {
+      const h = Number(time_hour);
+      if (!Number.isInteger(h) || h < 0 || h > 23) {
+        return res.status(400).json({ error: "Invalid field: time_hour (0-23)" });
+      }
+      update.time_hour = h;
+    }
   }
 
   if (Object.keys(update).length === 0) {
@@ -153,7 +224,7 @@ router.put("/:id", async (req, res) => {
 
 
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth, async (req, res) => {
   const oid = parseObjectId(req.params.id);
   if (!oid) return res.status(400).json({ error: "Invalid id" });
 

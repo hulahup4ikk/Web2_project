@@ -1,18 +1,20 @@
-# Assignment 3 – Part 1: MongoDB CRUD API + Query Options
+# Assignment 4 – Pre-Defense: Sessions & Security
 
-## Project: Shop API (Items)
+## Project: Easy ToDo (Tasks)
 Course: Web Programming 2
 
 ---
 
 ## Objective
 
-This project implements an Express.js REST API connected to MongoDB (MongoDB Atlas or local). It supports:
+This project implements an Express.js REST API connected to MongoDB and a Web UI. It supports:
 
-- One main entity: **items**
-- **CRUD** operations: Create, Read, Update, Delete
+- One main entity: **tasks**
+- **CRUD** operations via Web UI
 - Correct **HTTP status codes** and server-side validation
-- Query options: **filtering**, **sorting**, **projection** (select fields), and **pagination**
+- Query options: **filtering**, **sorting**, **projection** (select fields)
+- **Sessions-based authentication** with cookies
+- **Protected write operations** using middleware
 
 ---
 
@@ -20,21 +22,30 @@ This project implements an Express.js REST API connected to MongoDB (MongoDB Atl
 - Node.js
 - Express.js
 - MongoDB (official Node.js driver: `mongodb`)
+- express-session
+- bcrypt
 
 ---
 
 ## Database
-**Database name:** `shop`
+**Database name:** `todo_db`
 
-**Collection name:** `items`
+**Collection name:** `tasks`
 
 The collection is created automatically on the first insert.
 
-### Item document structure
+### Task document structure
 Required fields used in validation:
-- `name` (string)
-- `price` (number)
-- `category` (string)
+- `title` (string)
+
+Optional fields:
+- `description` (string | null)
+- `is_done` (boolean)
+- `priority` (number 1-5)
+- `due_date` (ISO string)
+- `category` (string | null)
+- `time_hour` (number 0-23)
+- `owner` (string | null)
 
 MongoDB automatically adds:
 - `_id` (ObjectId)
@@ -44,6 +55,7 @@ MongoDB automatically adds:
 ## Middleware
 - `express.json()` — parses JSON request bodies
 - Custom logger middleware — logs: `METHOD URL`
+- `express-session` — sessions stored server-side, session ID in cookie `sid`
 
 ---
 
@@ -52,15 +64,12 @@ MongoDB automatically adds:
 
    npm install
 
-2) Set MongoDB connection string
+2) Set environment variables (create `.env`)
 
-**Option A (recommended):** create `.env` or set environment variable:
-
-    MONGO_URL="mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/?retryWrites=true&w=majority"
-
-If `MONGO_URL` is not set, the app will use local MongoDB:
-
-    mongodb://127.0.0.1:27017
+    MONGO_URI="mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/?retryWrites=true&w=majority"
+    SESSION_SECRET="change_me_in_production"
+    ADMIN_EMAIL="admin@example.com"
+    ADMIN_PASSWORD="ChangeMe123!"
 
 3) Start the server
 
@@ -73,15 +82,15 @@ Server runs on:
 ---
 
 ## Home Page
-`GET /` returns a simple HTML page with quick links to test the API.
+`GET /` returns the Web UI (tasks list + CRUD).
 
 ---
 
 ## API Endpoints
-Base path: `/api/items`
+Base path: `/api/tasks`
 
-### 1) GET /api/items
-Returns all items.
+### 1) GET /api/tasks
+Returns all tasks.
 
 **Success**
 - `200 OK`
@@ -94,127 +103,50 @@ Returns all items.
 
 ---
 
-### 2) GET /api/items/:id
-Returns a single item by MongoDB ObjectId.
+### 2) GET /api/tasks/:id
+Returns a single task by MongoDB ObjectId.
 
 **Validation**
 - Invalid ObjectId → `400 Bad Request`
 
-  { "error": "Invalid id" }
-
 **Not found**
-- Item not found → `404 Not Found`
-
-  { "error": "Item not found" }
+- Task not found → `404 Not Found`
 
 **Success**
 - `200 OK`
 
 ---
 
-### 3) POST /api/items
-Creates a new item.
-
-**Request body example**
-
-    { "name": "Keyboard", "price": 120, "category": "Electronics" }
-
-**Validation**
-- Missing required fields → `400 Bad Request`
-
-  { "error": "Missing required fields" }
-
-**Success**
-- `201 Created` (returns created document)
+### 3) POST /api/tasks
+Creates a new task (auth required).
 
 ---
 
-### 4) PUT /api/items/:id
-Updates an existing item by ObjectId.
-
-**Request body example**
-
-    { "name": "Keyboard", "price": 130, "category": "Electronics" }
-
-**Validation**
-- Invalid ObjectId → `400 Bad Request`
-
-  { "error": "Invalid id" }
-
-- Missing required fields → `400 Bad Request`
-
-  { "error": "Missing required fields" }
-
-**Not found**
-- Item not found → `404 Not Found`
-
-  { "error": "Item not found" }
-
-**Success**
-- `200 OK` (returns updated document)
+### 4) PUT /api/tasks/:id
+Updates an existing task by ObjectId (auth required).
 
 ---
 
-### 5) DELETE /api/items/:id
-Deletes an item by ObjectId.
-
-**Validation**
-- Invalid ObjectId → `400 Bad Request`
-
-  { "error": "Invalid id" }
-
-**Not found**
-- Item not found → `404 Not Found`
-
-  { "error": "Item not found" }
-
-**Success**
-- `200 OK`
-
-  { "message": "Deleted" }
+### 5) DELETE /api/tasks/:id
+Deletes a task by ObjectId (auth required).
 
 ---
 
-## Query Options (for GET /api/items)
-The endpoint supports up to 5 query parameters:
+## Query Options (for GET /api/tasks)
+The endpoint supports query parameters:
 
 ### 1) Filtering
-Filter by one of these fields: `category`, `name`, `minPrice`, `maxPrice`
-
-Examples:
-
-    /api/items?category=Electronics
-    /api/items?name=Keyboard
-    /api/items?minPrice=50
-    /api/items?minPrice=50&maxPrice=200
+Filter by:
+- `q` (title search)
+- `is_done`
 
 ### 2) Sorting
-Sort by: `price`, `name`, or `_id`
-
-- `sort=price` sorts by price ascending
-- `sort=-price` sorts by price descending
-
-Examples:
-
-    /api/items?sort=price
-    /api/items?sort=-price
+Sort by:
+- `created_at`
+- `title`
 
 ### 3) Projection (select fields)
 Select returned fields using `fields` (comma-separated).
-
-Examples:
-
-    /api/items?fields=name,price
-    /api/items?fields=name,category
-
-### 4) Pagination
-- `limit` — maximum number of items
-- `skip` — number of items to skip
-
-Examples:
-
-    /api/items?limit=5
-    /api/items?skip=10&limit=5
 
 ---
 
@@ -227,20 +159,28 @@ Examples:
 
 ---
 
-## 404 Handling
-- Unknown API routes return JSON:
+## Authentication
+- Login endpoint: `POST /auth/login`
+- Logout endpoint: `POST /auth/logout`
+- Register endpoint: `POST /auth/register`
+- Session cookie: `sid` (HttpOnly, Secure in production)
+- Write operations require authentication:
+  - `POST /api/tasks`
+  - `PUT /api/tasks/:id`
+  - `DELETE /api/tasks/:id`
 
-  { "error": "API endpoint not found" }
-
-- Unknown non-API routes return HTML 404 page.
+## Security Notes (Defense)
+- **Authentication** verifies who the user is (login).
+- **Authorization** controls what the user can do (middleware on write routes).
+- **HttpOnly cookie** prevents JS access to session ID.
+- **Secure cookie** ensures cookie is sent only over HTTPS (production).
 
 ---
 
-## Team Member Contributions
-- **Ivan Kuznetsov** — Database connection and CRUD API implementation
-- **Zhumagali Beibarys** — Frontend HTML pages and navigation consistency
-- **Yskak Zhanibek** — Integration/testing, 404 handling, query options documentation
-- **Adilzhan Assanuly** — Project cleanup and final checks
+## Seed/Update Tasks
+To add missing fields to existing tasks:
+
+    npm run seed:tasks
 
 ---
 
