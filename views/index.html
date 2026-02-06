@@ -161,7 +161,11 @@
         const res = await fetch(buildApiUrl());
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
-          renderError(list, `HTTP ${res.status} ${txt}`);
+          if (res.status === 401) {
+            renderError(list, "Login required to view tasks");
+          } else {
+            renderError(list, `HTTP ${res.status} ${txt}`);
+          }
           return;
         }
 
@@ -224,13 +228,6 @@
             th.className = "task-meta";
             th.textContent = `Hour: ${t.time_hour}:00`;
             left.appendChild(th);
-          }
-
-          if (t.owner) {
-            const own = document.createElement("div");
-            own.className = "task-meta";
-            own.textContent = `Owner: ${t.owner}`;
-            left.appendChild(own);
           }
 
           if (showCreatedAt && t.created_at) {

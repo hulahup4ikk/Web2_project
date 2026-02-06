@@ -3,7 +3,8 @@ const express = require("express");
 const path = require("path");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
-const { connectToDatabase } = require("./mongo");
+const { connectToDatabase } = require("./config/db");
+const { findByEmail, createUser, updateRoleByEmail } = require("./models/userModel");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,16 +73,19 @@ async function ensureAdminUser() {
   const adminPassword = String(process.env.ADMIN_PASSWORD || "");
   if (!adminEmail || !adminPassword) return;
 
-  const db = await connectToDatabase();
-  const users = db.collection("users");
-
-  const existing = await users.findOne({ email: adminEmail });
-  if (existing) return;
+  const existing = await findByEmail(adminEmail);
+  if (existing) {
+    if (!existing.role) {
+      await updateRoleByEmail(adminEmail, "admin");
+    }
+    return;
+  }
 
   const password_hash = await bcrypt.hash(adminPassword, 10);
-  await users.insertOne({
+  await createUser({
     email: adminEmail,
     password_hash,
+    role: "admin",
     created_at: new Date().toISOString()
   });
 }

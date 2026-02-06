@@ -45,7 +45,7 @@ Optional fields:
 - `due_date` (ISO string)
 - `category` (string | null)
 - `time_hour` (number 0-23)
-- `owner` (string | null)
+- `ownerId` (ObjectId)
 
 MongoDB automatically adds:
 - `_id` (ObjectId)
